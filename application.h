@@ -6,6 +6,14 @@
 
 #include <memory>
 
+struct TVertex {
+    QVector3D Position;
+    QVector3D Normal;
+    QVector2D UV;
+    QVector3D Tangent;
+    QVector3D Bitangent;
+};
+
 class TApplication: public QGLWidget {
     Q_OBJECT
 public:
@@ -16,6 +24,7 @@ private:
     void paintEvent(QPaintEvent*);
     void RenderToFBO();
 private:
+    std::vector<TVertex> Obj;
     std::unique_ptr<QOpenGLBuffer> VertexBuff;
     std::unique_ptr<QOpenGLTexture> Texture;
     std::unique_ptr<QOpenGLTexture> NormalMap;

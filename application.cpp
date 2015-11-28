@@ -7,14 +7,6 @@
 constexpr int WINDOW_WIDTH = 600;
 constexpr int WINDOW_HEIGHT = 600;
 
-struct TVertex {
-    QVector3D Position;
-    QVector3D Normal;
-    QVector2D UV;
-    QVector3D Tangent;
-    QVector3D Bitangent;
-};
-
 void AddModelPoint(const std::string& pointStr,
                    const std::vector<QVector3D>& vertices,
                    const std::vector<QVector3D>& normals,
@@ -152,15 +144,15 @@ void TApplication::initializeGL() {
 
     // Load model and textures
 
-    std::vector<TVertex> obj = LoadObjModel("model.obj");
-    CalcTangentSpace(obj);
-    ObjectSize = obj.size();
+    Obj = LoadObjModel("model.obj");
+    CalcTangentSpace(Obj);
+    ObjectSize = Obj.size();
 
     VertexBuff.reset(new QOpenGLBuffer(QOpenGLBuffer::VertexBuffer));
     VertexBuff->create();
     VertexBuff->bind();
     VertexBuff->setUsagePattern(QOpenGLBuffer::StaticDraw);
-    VertexBuff->allocate(obj.data(), obj.size() * sizeof(TVertex));
+    VertexBuff->allocate(Obj.data(), Obj.size() * sizeof(TVertex));
     VertexBuff->release();
 
     Texture.reset(new QOpenGLTexture(QImage("diffuse.jpg")));
@@ -286,6 +278,57 @@ void TApplication::RenderToFBO() {
 
     Shader.disableAttributeArray("coord2d");
     Shader.disableAttributeArray("v_color");
+
+    Shader.release();
+
+    QMatrix4x4 modelView = view * model;
+
+
+    /// DEBUG INFO
+
+    glMatrixMode(GL_PROJECTION);
+    glLoadMatrixf(projection.data());
+    glMatrixMode(GL_MODELVIEW);
+    glLoadMatrixf(modelView.data());
+
+    // normals
+    glColor3f(0,0,1);
+    glBegin(GL_LINES);
+    for (size_t i = 0; i < Obj.size(); ++i) {
+        const TVertex& v = Obj[i];
+        QVector3D p = v.Position;
+        glVertex3f(p.x(), p.y(), p.z());
+        QVector3D n = v.Normal.normalized();
+        p += n * 0.3;
+        glVertex3f(p.x(), p.y(), p.z());
+    }
+    glEnd();
+
+    // tangent
+    glColor3f(1,0,0);
+    glBegin(GL_LINES);
+    for (size_t i = 0; i < Obj.size(); ++i) {
+        const TVertex& v = Obj[i];
+        QVector3D p = v.Position;
+        glVertex3f(p.x(), p.y(), p.z());
+        QVector3D n = v.Tangent.normalized();
+        p += n * 0.3;
+        glVertex3f(p.x(), p.y(), p.z());
+    }
+    glEnd();
+
+    // bitangent
+    glColor3f(0,1,0);
+    glBegin(GL_LINES);
+    for (size_t i = 0; i < Obj.size(); ++i) {
+        const TVertex& v = Obj[i];
+        QVector3D p = v.Position;
+        glVertex3f(p.x(), p.y(), p.z());
+        QVector3D n = v.Bitangent.normalized();
+        p += n * 0.3;
+        glVertex3f(p.x(), p.y(), p.z());
+    }
+    glEnd();
 
     Fbo->release();
 }
