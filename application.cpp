@@ -219,10 +219,8 @@ void TApplication::RenderToFBO() {
     Shader.setUniformValue("projection", projection);
     Shader.setUniformValue("view", view);
 
-    Shader.setUniformValue("lightIntensities", QVector3D(0.66, 0.66, 0.66));
+    Shader.setUniformValue("lightIntensities", QVector3D(1.0, 1.0, 1.0));
     Shader.setUniformValue("lightPosition", QVector3D(-30.0, 30.0, 30.0));
-
-    Shader.setUniformValue("normalsEnabled", true);
 
     QMatrix4x4 model;
     model.translate(0, 0, 0.0);
@@ -268,8 +266,6 @@ void TApplication::RenderToFBO() {
     offset += sizeof(QVector3D);
 
     VertexBuff->release();
-
-    Shader.setUniformValue("normalsEnabled", true);
 
     Texture->bind(0, QOpenGLTexture::ResetTextureUnit);
     Shader.setUniformValue("texture", 0);

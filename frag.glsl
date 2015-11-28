@@ -18,10 +18,7 @@ void main(void) {
     float x = fragTexCoord.x;
     float y = 1.0 - fragTexCoord.y;
 
-    vec3 norm;
-    if (normalsEnabled) {
-        norm = texture2D(normalMap, vec2(x, y)).rgb * 2.0 - 1.0;
-    }
+    vec3 norm = texture2D(normalMap, vec2(x, y)).rgb * 2.0 - 1.0;
 
     vec3 normal = normalize(normalMatrix * fragNormal);
     vec3 fragPosition = vec3(model * vec4(fragVert, 1));
@@ -30,11 +27,9 @@ void main(void) {
     float brightness = dot(normal, surfaceToLight) / (length(surfaceToLight) * length(normal));
     brightness = clamp(brightness, 0.05, 1);
 
-    if (normalsEnabled) {
-        float brightness1 = dot(norm, surfaceToLight) / (length(surfaceToLight) * length(norm));
-        if (brightness1 < brightness) {
-            brightness = brightness1;
-        }
+    float brightness1 = dot(norm, surfaceToLight) / (length(surfaceToLight) * length(norm));
+    if (brightness1 < brightness) {
+        brightness = brightness1;
     }
 
     vec4 surfaceColor = texture2D(texture, vec2(x, y));
