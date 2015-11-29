@@ -247,9 +247,9 @@ void TApplication::initializeGL() {
 
 void TApplication::timerEvent(QTimerEvent*) {
     if (!Paused) {
-        AngleX += 0.2;
-        AngleY += 0.3;
-        AngleZ += 0.4;
+        AngleX += 0.4;
+        AngleY += 0.5;
+        AngleZ += 0.6;
     }
     this->update();
 }
@@ -361,7 +361,7 @@ void TApplication::RenderToFBO() {
 
     QMatrix4x4 modelView = view * model;
 
-
+/*
     /// DEBUG INFO
 
     glMatrixMode(GL_PROJECTION);
@@ -429,6 +429,6 @@ void TApplication::RenderToFBO() {
         glVertex3f(p.x(), p.y(), p.z());
     }
     glEnd();
-
+*/
     Fbo->release();
 }
