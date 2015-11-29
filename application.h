@@ -21,6 +21,7 @@ public:
 private:
     void initializeGL();
     void timerEvent(QTimerEvent*);
+    void keyPressEvent(QKeyEvent* e);
     void paintEvent(QPaintEvent*);
     void RenderToFBO();
 private:
@@ -33,4 +34,5 @@ private:
     std::unique_ptr<QOpenGLFramebufferObject> Fbo1;
     QGLShaderProgram Shader;
     float AngleX, AngleY, AngleZ;
+    bool Paused;
 };

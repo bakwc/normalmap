@@ -1,5 +1,11 @@
 #include <fstream>
 #include <sstream>
+#include <unordered_map>
+
+#include <QFile>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QJsonArray>
 
 #include "application.h"
 
@@ -108,6 +114,68 @@ void CalcTangentSpace(std::vector<TVertex>& vertices) {
     }
 }
 
+static std::vector<TVertex> LoadJsonModel(const QString& fileName) {
+      QString val;
+      QFile file;
+      file.setFileName(fileName);
+      file.open(QIODevice::ReadOnly | QIODevice::Text);
+      val = file.readAll();
+      file.close();
+
+      QJsonDocument d = QJsonDocument::fromJson(val.toUtf8());
+      QJsonObject meshes = d.object().value("meshes").toArray().at(0).toObject();
+
+      QJsonArray vertices = meshes.value("vertices").toArray();
+      QJsonArray normals = meshes.value("normals").toArray();
+      QJsonArray tangents = meshes.value("tangents").toArray();
+      QJsonArray bitangents = meshes.value("bitangents").toArray();
+      QJsonArray texturecoords = meshes.value("texturecoords").toArray().at(0).toArray();
+      QJsonArray faces = meshes.value("faces").toArray();
+
+      std::vector<TVertex> data;
+      size_t objectSize = vertices.size() / 3;
+      for (size_t i = 0; i < objectSize; ++i) {
+          TVertex v;
+
+          size_t idx = i * 3;
+          size_t idx2 = i * 2;
+
+          v.Position.setX(vertices.at(idx + 0).toDouble());
+          v.Position.setY(vertices.at(idx + 1).toDouble());
+          v.Position.setZ(vertices.at(idx + 2).toDouble());
+
+          v.Normal.setX(normals.at(idx + 0).toDouble());
+          v.Normal.setY(normals.at(idx + 1).toDouble());
+          v.Normal.setZ(normals.at(idx + 2).toDouble());
+
+          v.Tangent.setX(tangents.at(idx + 0).toDouble());
+          v.Tangent.setY(tangents.at(idx + 1).toDouble());
+          v.Tangent.setZ(tangents.at(idx + 2).toDouble());
+
+          v.Bitangent.setX(bitangents.at(idx + 0).toDouble());
+          v.Bitangent.setY(bitangents.at(idx + 1).toDouble());
+          v.Bitangent.setZ(bitangents.at(idx + 2).toDouble());
+
+          v.UV.setX(texturecoords.at(idx2 + 0).toDouble());
+          v.UV.setY(texturecoords.at(idx2 + 1).toDouble());
+
+          data.push_back(v);
+      }
+
+      std::vector<TVertex> dataFull;
+      for (size_t i = 0; i < faces.size(); ++i) {
+          QJsonArray face = faces.at(i).toArray();
+          Q_ASSERT(face.size() == 3);
+          for (size_t j = 0; j < face.size(); ++j) {
+              int idx = face.at(j).toInt();
+              dataFull.push_back(data[idx]);
+          }
+      }
+
+      return dataFull;
+}
+
+
 TApplication::TApplication(QGLFormat format)
     : QGLWidget(format)
 {
@@ -144,8 +212,10 @@ void TApplication::initializeGL() {
 
     // Load model and textures
 
-    Obj = LoadObjModel("model.obj");
-    CalcTangentSpace(Obj);
+//    Obj = LoadObjModel("model.obj");
+//    CalcTangentSpace(Obj);
+
+    Obj = LoadJsonModel("asteroid-n1.json");
     ObjectSize = Obj.size();
 
     VertexBuff.reset(new QOpenGLBuffer(QOpenGLBuffer::VertexBuffer));
@@ -171,13 +241,21 @@ void TApplication::initializeGL() {
     AngleX = 0;
     AngleY = 0;
     AngleZ = 0;
+
+    Paused = false;
 }
 
 void TApplication::timerEvent(QTimerEvent*) {
-    AngleX += 0.4;
-    AngleY += 0.5;
-    AngleZ += 0.6;
+    if (!Paused) {
+        AngleX += 0.2;
+        AngleY += 0.3;
+        AngleZ += 0.4;
+    }
     this->update();
+}
+
+void TApplication::keyPressEvent(QKeyEvent* e) {
+    Paused = !Paused;
 }
 
 void TApplication::paintEvent(QPaintEvent*) {
@@ -291,15 +369,35 @@ void TApplication::RenderToFBO() {
     glMatrixMode(GL_MODELVIEW);
     glLoadMatrixf(modelView.data());
 
+//    glDisable(GL_DEPTH_TEST);
+
+    glColor3f(1, 1, 1);
+    glBegin(GL_LINES);
+    for (size_t i = 0; i < Obj.size(); i += 3) {
+        const TVertex& v1 = Obj[i];
+        const TVertex& v2 = Obj[i + 1];
+        const TVertex& v3 = Obj[i + 2];
+        glVertex3f(v1.Position.x(), v1.Position.y(), v1.Position.z());
+        glVertex3f(v2.Position.x(), v2.Position.y(), v2.Position.z());
+
+        glVertex3f(v1.Position.x(), v1.Position.y(), v1.Position.z());
+        glVertex3f(v3.Position.x(), v3.Position.y(), v3.Position.z());
+
+        glVertex3f(v2.Position.x(), v2.Position.y(), v2.Position.z());
+        glVertex3f(v3.Position.x(), v3.Position.y(), v3.Position.z());
+    }
+    glEnd();
+
     // normals
     glColor3f(0,0,1);
     glBegin(GL_LINES);
     for (size_t i = 0; i < Obj.size(); ++i) {
         const TVertex& v = Obj[i];
         QVector3D p = v.Position;
+        p *= 1.02;
         glVertex3f(p.x(), p.y(), p.z());
         QVector3D n = v.Normal.normalized();
-        p += n * 0.3;
+        p += n * 0.8;
         glVertex3f(p.x(), p.y(), p.z());
     }
     glEnd();
@@ -310,9 +408,10 @@ void TApplication::RenderToFBO() {
     for (size_t i = 0; i < Obj.size(); ++i) {
         const TVertex& v = Obj[i];
         QVector3D p = v.Position;
+        p *= 1.02;
         glVertex3f(p.x(), p.y(), p.z());
         QVector3D n = v.Tangent.normalized();
-        p += n * 0.3;
+        p += n * 0.8;
         glVertex3f(p.x(), p.y(), p.z());
     }
     glEnd();
@@ -323,6 +422,7 @@ void TApplication::RenderToFBO() {
     for (size_t i = 0; i < Obj.size(); ++i) {
         const TVertex& v = Obj[i];
         QVector3D p = v.Position;
+        p *= 1.02;
         glVertex3f(p.x(), p.y(), p.z());
         QVector3D n = v.Bitangent.normalized();
         p += n * 0.3;
