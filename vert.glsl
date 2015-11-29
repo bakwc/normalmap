@@ -12,7 +12,6 @@ varying vec3 fragNormal;
 varying mat3 toTangentSpace;
 
 void main(void) {
-    // Pass some variables to the fragment shader
     fragTexCoord = vertTexCoord;
     fragNormal = vec3(gl_Normal);
     fragVert = vec3(gl_Vertex);
