@@ -24,7 +24,7 @@ void main(void) {
 
     surfaceToLight = normalize(toTangentSpace * surfaceToLight);
 
-    float brightness = dot(normal, surfaceToLight) / (length(surfaceToLight) * length(normal));
+    float brightness = dot(normal, surfaceToLight) / (length(surfaceToLight));
     brightness = clamp(brightness, 0.05, 1);
 
     vec4 surfaceColor = texture2D(texture, vec2(x, y));

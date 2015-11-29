@@ -13,106 +13,6 @@
 constexpr int WINDOW_WIDTH = 600;
 constexpr int WINDOW_HEIGHT = 600;
 
-void AddModelPoint(const std::string& pointStr,
-                   const std::vector<QVector3D>& vertices,
-                   const std::vector<QVector3D>& normals,
-                   const std::vector<QVector2D>& textCoords,
-                   std::vector<TVertex>& verticesData)
-{
-    std::string vIdxStr, tIdxStr, nIdxStr;
-    int readState = 0;
-    for (size_t i = 0; i < pointStr.size(); ++i) {
-        if (pointStr[i] == '/') {
-            readState += 1;
-        } else if (readState == 0) {
-            vIdxStr += pointStr[i];
-        } else if (readState == 1) {
-            tIdxStr += pointStr[i];
-        } else {
-            nIdxStr += pointStr[i];
-        }
-    }
-    int vIdx = std::stoi(vIdxStr) - 1;
-    int tIdx = std::stoi(tIdxStr) - 1;
-    int nIdx = std::stoi(nIdxStr) - 1;
-    const QVector3D& vertex = vertices[vIdx];
-    const QVector3D& normal = normals[nIdx];
-    const QVector2D& textCoord = textCoords[tIdx];
-
-    verticesData.push_back({
-        vertex,
-        normal,
-        textCoord,
-        QVector3D(),
-        QVector3D(),
-    });
-}
-
-static std::vector<TVertex> LoadObjModel(const std::string& fileName) {
-    std::vector<TVertex> data;
-    std::ifstream in(fileName);
-    std::string line;
-    std::vector<QVector3D> vertices;
-    std::vector<QVector2D> textCoords;
-    std::vector<QVector3D> normals;
-    while (std::getline(in, line)) {
-        std::istringstream lin(line);
-        std::string param;
-        lin >> param;
-        if (param == "v") {
-            float x, y, z;
-            lin >> x >> y >> z;
-            vertices.emplace_back(x, y, z);
-        } else if (param == "vn") {
-            float x, y, z;
-            lin >> x >> y >> z;
-            normals.emplace_back(x, y, z);
-        } else if (param == "vt") {
-            float x, y;
-            lin >> x >> y;
-            textCoords.emplace_back(x, y);
-        } else if (param == "f") {
-            std::string v1, v2, v3;
-            lin >> v1 >> v2 >> v3;
-            AddModelPoint(v1, vertices, normals, textCoords, data);
-            AddModelPoint(v2, vertices, normals, textCoords, data);
-            AddModelPoint(v3, vertices, normals, textCoords, data);
-        }
-    }
-    return data;
-}
-
-void CalcTangentSpace(std::vector<TVertex>& vertices) {
-    for (size_t i = 0; i < vertices.size(); i += 3) {
-        QVector3D& v0 = vertices[i].Position;
-        QVector3D& v1 = vertices[i + 1].Position;
-        QVector3D& v2 = vertices[i + 2].Position;
-
-        QVector2D& uv0 = vertices[i].UV;
-        QVector2D& uv1 = vertices[i + 1].UV;
-        QVector2D& uv2 = vertices[i + 2].UV;
-
-        QVector3D deltaPos1 = v1 - v0;
-        QVector3D deltaPos2 = v2 - v0;
-
-        QVector2D deltaUV1 = uv1 - uv0;
-        QVector2D deltaUV2 = uv2 - uv0;
-
-        float r = 1.0f / (deltaUV1.x() * deltaUV2.y() - deltaUV2.y() * deltaUV2.x());
-
-        QVector3D tangent = (deltaPos1 * deltaUV2.y()   - deltaPos2 * deltaUV1.y()) * r;
-        QVector3D bitangent = (deltaPos2 * deltaUV1.x()   - deltaPos1 * deltaUV2.x()) * r;
-
-
-        tangent.normalize();
-        bitangent.normalize();
-
-        for (size_t j = i; j < i + 3; ++j) {
-            vertices[j].Tangent = tangent;
-            vertices[j].Bitangent = bitangent;
-        }
-    }
-}
 
 static std::vector<TVertex> LoadJsonModel(const QString& fileName) {
       QString val;
@@ -212,10 +112,7 @@ void TApplication::initializeGL() {
 
     // Load model and textures
 
-//    Obj = LoadObjModel("model.obj");
-//    CalcTangentSpace(Obj);
-
-    Obj = LoadJsonModel("asteroid-n1.json");
+    Obj = LoadJsonModel("model.json");
     ObjectSize = Obj.size();
 
     VertexBuff.reset(new QOpenGLBuffer(QOpenGLBuffer::VertexBuffer));
@@ -359,10 +256,10 @@ void TApplication::RenderToFBO() {
 
     Shader.release();
 
-    QMatrix4x4 modelView = view * model;
-
 /*
     /// DEBUG INFO
+
+    QMatrix4x4 modelView = view * model;
 
     glMatrixMode(GL_PROJECTION);
     glLoadMatrixf(projection.data());
